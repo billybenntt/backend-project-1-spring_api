@@ -4,6 +4,7 @@ import com.houseoftheapp.database.domain.dto.BookDto;
 import com.houseoftheapp.database.domain.entities.BookEntity;
 import com.houseoftheapp.database.mappers.Mapper;
 import com.houseoftheapp.database.services.BookService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,7 @@ public class BookController {
     private final BookService bookService;
     private final Mapper<BookEntity, BookDto> bookMapper;
 
+    @Autowired
     public BookController(Mapper<BookEntity, BookDto> bookMapper, BookService bookService) {
         this.bookMapper = bookMapper;
         this.bookService = bookService;
@@ -26,11 +28,26 @@ public class BookController {
 
     // ADD ONE
     @PutMapping(path = "/books/{isbn}")
-    public ResponseEntity<BookDto> createBook(@PathVariable String isbn, @RequestBody BookDto bookDto) {
+    public ResponseEntity<BookDto> createUpdateBook(
+            @PathVariable String isbn, @RequestBody BookDto bookDto) {
+
+
+        boolean bookExists = bookService.isExist(isbn);
+
+        // DTO -> ENTITY
         BookEntity bookEntity = bookMapper.mapFrom(bookDto);
-        BookEntity savedBookEntity = bookService.createBook(isbn, bookEntity);
+        BookEntity savedBookEntity = bookService.createUpdateBook(isbn, bookEntity);
         BookDto savedUpdatedBookDto = bookMapper.mapTo(savedBookEntity);
-        return new ResponseEntity<>(savedUpdatedBookDto, HttpStatus.CREATED);
+
+        if (bookExists) {
+            return new ResponseEntity<>(savedUpdatedBookDto, HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(savedUpdatedBookDto,
+                    HttpStatus.CREATED);
+
+        }
+
+
     }
 
 
@@ -53,5 +70,27 @@ public class BookController {
 
     }
 
+    // PARTIAL UPDATE
+    @PatchMapping(path = "/books/{isbn}")
+    public ResponseEntity<BookDto> partialUpdateBook(
+            @PathVariable("isbn") String isbn, @RequestBody BookDto bookDto) {
 
+        BookEntity bookEntity = bookMapper.mapFrom(bookDto);
+
+
+        if (!bookService.isExist(isbn)) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+
+        BookEntity updatedBookEntity = bookService.partialUpdate(isbn,
+                bookEntity);
+
+        BookDto responseDTO = bookMapper.mapTo(updatedBookEntity);
+
+
+        return new ResponseEntity<>(responseDTO, HttpStatus.OK);
+    }
+
+
+    // end of class
 }
